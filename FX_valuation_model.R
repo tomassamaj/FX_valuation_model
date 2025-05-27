@@ -369,6 +369,67 @@ fwd_premium_df <- merged_df %>%select(date)
 for (i in curr_ex_USD) {
   fwd_premium_df[i] <- (merged_df[paste0(i,".x")] - merged_df[paste0(i,".y")]) / merged_df[paste0(i,".y")] * 100
 }
+# Rename date column to Date
+fwd_premium_df <- fwd_premium_df %>%rename(Date = date)
+
+
 
 ### Output table
+fwd_premium_table <- lapply(reference_dates, get_closest_row, df = fwd_premium_df)
+fwd_premium_output_df <- bind_rows(fwd_premium_table, .id = "Period")
+fwd_premium_output_df <- fwd_premium_output_df[, c("Period", names(fwd_premium_df)[names(fwd_premium_df) != "Date"])]
+rownames(fwd_premium_output_df) <- fwd_premium_output_df$Period
+fwd_premium_output_df <- fwd_premium_output_df[, -1] 
+fwd_premium_output_df
 
+
+### Print formatted outputs of Fwd Premium analysis
+fwd_premium_formatted_df <- fwd_premium_output_df
+fwd_premium_formatted_df <- round(fwd_premium_formatted_df, 2)
+fwd_premium_change_rows <- "Today"
+
+# Apply conditional formatting row-wise
+for (row in fwd_premium_change_rows) {
+  vals <- as.numeric(fwd_premium_formatted_df[row, ])
+  
+  # Create a logical vector to identify NAs
+  is_na <- is.na(vals)
+  
+  # Initialize colors vector, defaulting to white for NAs
+  colors <- rep("#FFFFFF", length(vals)) # Default to white background
+  
+  # Only apply scaling and color logic to non-NA values
+  if (any(!is_na)) { # Check if there are any non-NA values to process
+    non_na_vals <- vals[!is_na]
+    
+    # Scale values between -1 and 1 based on max absolute value for non-NA values
+    max_abs_val <- max(abs(non_na_vals), na.rm = TRUE)
+    scaled <- non_na_vals / max_abs_val
+    
+    # RGB coloring: red → white → green for non-NA values
+    non_na_colors <- rgb(
+      red   = ifelse(scaled < 0, 1, 1 - scaled),
+      green = ifelse(scaled > 0, 1, 1 + scaled),
+      blue  = ifelse(scaled < 0, 1 + scaled, 1 - scaled)
+    )
+    
+    # Assign the calculated colors back to the 'colors' vector for non-NA positions
+    colors[!is_na] <- non_na_colors
+  }
+  
+  # Apply formatting
+  # For NA values, cell_spec will still print "NA" as text, but with a white background.
+  # For non-NA values, it will print the value with the calculated color.
+  fwd_premium_formatted_df[row, ] <- cell_spec(vals, color = "black", background = colors, format = "html")
+}
+
+# Print styled table
+kable(fwd_premium_formatted_df,
+      format = "html",
+      escape = FALSE, # Enable HTML rendering in cells
+      caption = "Forward Premium (1M; against USD) in %",
+      align = "r") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F,
+                position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
