@@ -2,11 +2,41 @@
 library(Rblpapi)
 library(dplyr)
 library(lubridate)
+library(knitr)
+library(kableExtra)
 
 blpConnect()
 
 ### Define currencies and REER tickers
-curr <- c("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "NZD", "SEK")
+curr <- c(
+  # Emerging Markets
+  "INR",  # India
+  "CNY",  # China
+  "EGP",  # Egypt
+  "ZAR",  # South Africa
+  "KRW",  # South Korea
+  "TWD",  # Taiwan
+  "THB",  # Thailand
+  "CZK",  # Czech Republic
+  "PLN",  # Poland
+  "ARS",  # Argentina
+  "CLP",  # Chile
+  "TRY",  # Turkey
+  
+  # Developed Markets
+  "CAD",  # Canada
+  "USD",  # USA
+  "EUR",  
+  "ILS",  # Israel
+  "SEK",  # Sweden
+  "CHF",  # Switzerland
+  "GBP",  # United Kingdom
+  "AUD",  # Australia
+  "HKD",  # Hong Kong
+  "JPY",  # Japan
+  "SGD"   # Singapore
+)
+
 broad_REER <- paste0("CTTWBR", substr(curr, 1, 2), " Index")
 narrow_REER <- paste0("CTTWNR", substr(curr, 1, 2), " Index")
 
@@ -96,4 +126,80 @@ print(narrow_output_df)
 
 
 
+
+
+
+
+
+
+
+
+### Print formatted outputs of REER analysis ###
+broad_formatted_df <- broad_output_df
+broad_change_rows <- rownames(broad_formatted_df)[grepl("Δ", rownames(broad_formatted_df))]
+
+# Apply conditional formatting row-wise
+for (row in broad_change_rows) {
+  vals <- as.numeric(broad_formatted_df[row, ])
+  
+  # Scale values between -1 and 1 based on max absolute value
+  max_abs_val <- max(abs(vals), na.rm = TRUE)
+  scaled <- vals / max_abs_val
+  
+  # RGB coloring: red → white → green
+  colors <- rgb(
+    red   = ifelse(scaled < 0, 1, 1 - scaled),
+    green = ifelse(scaled > 0, 1, 1 + scaled),
+    blue  = ifelse(scaled < 0, 1 + scaled, 1 - scaled)
+  )
+  
+  # Apply formatting
+  broad_formatted_df[row, ] <- cell_spec(vals, color = "black", background = colors, format = "html")
+}
+
+# Print styled table
+kable(broad_formatted_df, 
+      format = "html", 
+      escape = FALSE,  # Enable HTML rendering in cells
+      caption = "Citi Broad REER Index",
+      align = "r") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F,
+                position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
+
+
+
+narrow_formatted_df <- narrow_output_df
+narrow_change_rows <- rownames(narrow_formatted_df)[grepl("Δ", rownames(narrow_formatted_df))]
+
+# Apply conditional formatting row-wise
+for (row in narrow_change_rows) {
+  vals <- as.numeric(narrow_formatted_df[row, ])
+  
+  # Scale values between -1 and 1 based on max absolute value
+  max_abs_val <- max(abs(vals), na.rm = TRUE)
+  scaled <- vals / max_abs_val
+  
+  # RGB coloring: red → white → green
+  colors <- rgb(
+    red   = ifelse(scaled < 0, 1, 1 - scaled),
+    green = ifelse(scaled > 0, 1, 1 + scaled),
+    blue  = ifelse(scaled < 0, 1 + scaled, 1 - scaled)
+  )
+  
+  # Apply formatting
+  narrow_formatted_df[row, ] <- cell_spec(vals, color = "black", background = colors, format = "html")
+}
+
+# Print styled table
+kable(narrow_formatted_df, 
+      format = "html", 
+      escape = FALSE,  # Enable HTML rendering in cells
+      caption = "Citi Narrow REER Index",
+      align = "r") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F,
+                position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
 
