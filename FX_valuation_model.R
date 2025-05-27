@@ -327,8 +327,8 @@ spot_final_combined_df <- reduce(
 final_spot_fwd_points_df <- left_join(spot_final_combined_df, fwd_points_final_combined_df, by = "date")
 
 fwd_points_df <- final_spot_fwd_points_df %>% select(date)
-for (curr in curr_fwd_points){
-  fwd_points_df[curr] <- final_spot_fwd_points_df[paste0(curr,"_SPOT")]+final_spot_fwd_points_df[curr]/10000
+for (i in curr_fwd_points){
+  fwd_points_df[i] <- final_spot_fwd_points_df[paste0(i,"_SPOT")]+final_spot_fwd_points_df[i]/10000
 } 
 
 ### Combine outrights with forward point rates
@@ -366,8 +366,8 @@ spot_final_combined_df <- reduce(
 ### Calculate forward premium
 merged_df <- left_join(fwd_1M, spot_final_combined_df, by = "date")
 fwd_premium_df <- merged_df %>%select(date)
-for (curr in curr_ex_USD) {
-  fwd_premium_df[curr] <- (merged_df[paste0(curr,".x")] - merged_df[paste0(curr,".y")]) / merged_df[paste0(curr,".y")] * 100
+for (i in curr_ex_USD) {
+  fwd_premium_df[i] <- (merged_df[paste0(i,".x")] - merged_df[paste0(i,".y")]) / merged_df[paste0(i,".y")] * 100
 }
 
 ### Output table
