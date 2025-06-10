@@ -80,7 +80,7 @@ narrow_REER_df <- data.frame(
 )
 
 ### Output table
-end_date <- Sys.Date()  # most recent available
+end_date <- as.Date("2025-05-27")  # most recent available
 reference_dates <- c(
   "Today" = end_date,
   "t-1W" = end_date - weeks(1),
@@ -160,7 +160,7 @@ for (row in broad_change_rows) {
 kable(broad_formatted_df, 
       format = "html", 
       escape = FALSE,  # Enable HTML rendering in cells
-      caption = "Citi Broad REER Index",
+      caption = "Citi Broad REER Index (2017 = 100)",
       align = "r") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
                 full_width = F,
@@ -195,7 +195,7 @@ for (row in narrow_change_rows) {
 kable(narrow_formatted_df, 
       format = "html", 
       escape = FALSE,  # Enable HTML rendering in cells
-      caption = "Citi Narrow REER Index",
+      caption = "Citi Narrow REER Index (2017 = 100)",
       align = "r") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
                 full_width = F,
