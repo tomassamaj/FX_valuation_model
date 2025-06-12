@@ -332,6 +332,22 @@ for (i in curr_fwd_points){
 ### Combine outrights with forward point rates
 fwd_1M <- left_join(fwd_points_1M_df, outrt_final_1M_combined_df, by = "date")
 
+colnames(fwd_1M) <- sapply(colnames(fwd_1M), function(x) {
+  dplyr::case_when(
+    x == "NTN" ~ "TWD",
+    x == "CCN" ~ "CNY",
+    x == "APN" ~ "ARS",
+    x == "CHN" ~ "CLP",
+    x == "IRN" ~ "INR",
+    x == "KWN" ~ "KRW",
+    x == "EPN" ~ "EGP",
+    TRUE ~ x
+  )
+})
+
+
+
+
 ### Download all spot FX rates
 curr_ex_USD <- curr[!curr %in% c("USD")]
 spot_tickers <- paste0(curr_ex_USD,"USD"," Curncy")
@@ -500,6 +516,20 @@ for (i in curr_fwd_points){
 
 ### Combine outrights with forward point rates
 fwd_1Y <- left_join(fwd_points_1Y_df, outrt_final_1Y_combined_df, by = "date")
+
+colnames(fwd_1Y) <- sapply(colnames(fwd_1Y), function(x) {
+  dplyr::case_when(
+    x == "NTN" ~ "TWD",
+    x == "CCN" ~ "CNY",
+    x == "APN" ~ "ARS",
+    x == "CHN" ~ "CLP",
+    x == "IRN" ~ "INR",
+    x == "KWN" ~ "KRW",
+    x == "EPN" ~ "EGP",
+    TRUE ~ x
+  )
+})
+
 
 ### Calculate 1Y forward premium
 merged_1Y_df <- left_join(fwd_1Y, spot_final_combined_df, by = "date")
