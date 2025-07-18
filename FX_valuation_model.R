@@ -221,6 +221,10 @@ kable(narrow_formatted_df,
 ### 2. FORWARD PREMIUM ###
 ##########################
 
+# Define currencies to be reciprocated for FX rates
+currencies_to_reciprocate <- c("EUR", "GBP", "AUD")
+
+
 ### Define outright forwards tickers
 curr_outrt <- curr[!curr %in% c("USD", "CZK", "PLN", "CAD", "EUR", "ILS", "SEK", "CHF", "GBP", "AUD", "HKD", "SGD")]
 curr_outrt <- dplyr::case_when(
@@ -336,11 +340,19 @@ fwd_points_1M_df <- final_spot_fwd_points_1M_df %>% select(date)
 j <- 1
 for (ccy in curr_fwd_points) {
   
-  k_spot      <- paste0(ccy, "_SPOT")              # column with spot
+  k_spot      <- paste0(ccy, "_SPOT")             # column with spot
   scale       <- scale_tbl_1M[j]
-  fwd_points_1M_df[[ccy]] <-
-    final_spot_fwd_points_1M_df[[k_spot]] +
-    final_spot_fwd_points_1M_df[[ccy]] / 10^scale
+  
+  # Apply reciprocation directly within the calculation for EUR, GBP, AUD
+  if (ccy %in% currencies_to_reciprocate) {
+    fwd_points_1M_df[[ccy]] <-
+      1/((1 / final_spot_fwd_points_1M_df[[k_spot]]) +
+      (final_spot_fwd_points_1M_df[[ccy]]) / 10^scale)
+  } else {
+    fwd_points_1M_df[[ccy]] <-
+      final_spot_fwd_points_1M_df[[k_spot]] +
+      final_spot_fwd_points_1M_df[[ccy]] / 10^scale
+  }
   j <- j+1
 }
 
@@ -392,7 +404,6 @@ spot_final_combined_df <- reduce(
   .init = spot_master_dates_df,     # The initial dataframe to start with (our master set of dates)
   by = "date"                  # The common column to join by
 )
-
 
 ### Calculate 1M forward premium
 merged_1M_df <- left_join(fwd_1M, spot_final_combined_df, by = "date")
@@ -474,11 +485,8 @@ kable(fwd_1M_premium_formatted_df,
 
 
 
-##############################################################
-### 2-bis.  FORWARD-PREMIUM (1 Y) – revised for TRY & THB  ###
-##############################################################
-
-## ---------- 1.  1-Y forward instruments -------------------
+## 2-bis. Forward-Premium (1Y) – Revised for TRY & THB
+## ---------- 1. 1-Y forward instruments -------------------
 ##   • all quotes remain USD/CCY                             ##
 ##   • TRY & THB now treated as forward-points pairs         ##
 
@@ -490,11 +498,11 @@ fwd_1Y_outrt    <- paste0(curr_outrt_1Y, "+12M Curncy")
 curr_fwd_pts_1Y <- c(curr_fwd_points, "TRY", "THB")
 fwd_1Y_points   <- paste0(curr_fwd_pts_1Y, "12M Curncy")
 
-## ---------- 2.  Download forward data (same as before) ----
-fwd_1Y_outrt_data  <- lapply(fwd_1Y_outrt,  \(t)
-                             bdh(t, "PX_LAST",
-                                 start.date = as.Date("2020-01-01"),
-                                 end.date   = end_date)) |>
+## ---------- 2. Download forward data (same as before) ----
+fwd_1Y_outrt_data   <- lapply(fwd_1Y_outrt,  \(t)
+                              bdh(t, "PX_LAST",
+                                  start.date = as.Date("2020-01-01"),
+                                  end.date   = end_date)) |>
   rlang::set_names(curr_outrt_1Y)
 
 fwd_1Y_points_data <- lapply(fwd_1Y_points, \(t)
@@ -503,7 +511,7 @@ fwd_1Y_points_data <- lapply(fwd_1Y_points, \(t)
                                  end.date   = end_date)) |>
   rlang::set_names(curr_fwd_pts_1Y)
 
-## ---------- 3.  Melt to wide data frames -------------------
+## ---------- 3. Melt to wide data frames -------------------
 
 ## helper to bind all series by date ---------------------------------
 bind_series <- function(lst){
@@ -517,10 +525,10 @@ bind_series <- function(lst){
 outrt_1Y_df       <- bind_series(fwd_1Y_outrt_data)      # outright prices
 fwd_points_1Y_df  <- bind_series(fwd_1Y_points_data)     # points (not yet scaled)
 
-## ---------- 4.  Convert points → outright ------------------
+## ---------- 4. Convert points → outright ------------------
 
 ## we already have spot_fwd_points_final_combined_df from the 1 M block
-## (spot quoted USD/CCY).  Use it; no need to re-download.
+## (spot quoted USD/CCY). Use it; no need to re-download.
 ## Merge spot + points, then add points / 10^scale
 
 scale_tbl_1Y <- bdp(fwd_1Y_points, "FWD_SCALE") |> tibble::deframe()
@@ -537,9 +545,9 @@ spot_fwd_points_final_combined_df <-
   dplyr::left_join(spot_extra, by = "date")
 
 ## ---- add TRY_SPOT & THB_SPOT to the points-spot panel ----
-spot_fwd_pts_full <- spot_fwd_points_final_combined_df       # from 1-M block
+spot_fwd_pts_full <- spot_fwd_points_final_combined_df      # from 1-M block
 if (!all(c("TRY_SPOT","THB_SPOT") %in% names(spot_fwd_pts_full))) {
-  spot_extra <- spot_final_combined_df |>                    # big USD/CCY spot
+  spot_extra <- spot_final_combined_df |>               # big USD/CCY spot
     select(date, TRY, THB) |>
     rename(TRY_SPOT = TRY, THB_SPOT = THB)
   spot_fwd_pts_full <- left_join(spot_fwd_pts_full,
@@ -554,13 +562,21 @@ k <- 1
 for (ccy in curr_fwd_pts_1Y){
   scale  <- scale_tbl_1Y[k]
   spot_c <- paste0(ccy, "_SPOT")
-  fwd_add_1Y_df[[ccy]] <-
-    spot_fwd_points_final_combined_df[[spot_c]] +
-    fwd_points_1Y_df[[ccy]] / 10^scale
+  
+  # Apply reciprocation directly within the calculation for EUR, GBP, AUD
+  if (ccy %in% currencies_to_reciprocate) {
+    fwd_add_1Y_df[[ccy]] <-
+      1/((1 / spot_fwd_pts_full[[spot_c]]) +
+           (fwd_points_1Y_df[[ccy]]) / 10^scale)
+  } else {
+    fwd_add_1Y_df[[ccy]] <-
+      spot_fwd_pts_full[[spot_c]] +
+      fwd_points_1Y_df[[ccy]] / 10^scale
+  }
   k <- k+1
 }
 
-## ---------- 5.  Combine: “synthetic” + outright ------------
+## ---------- 5. Combine: “synthetic” + outright ------------
 fwd_1Y <- dplyr::left_join(fwd_add_1Y_df, outrt_1Y_df, by = "date")
 
 ## Rename the exotic Bloomberg root codes back to ISO ccy tags
@@ -573,12 +589,11 @@ colnames(fwd_1Y) <- sapply(colnames(fwd_1Y), \(x)
                              x == "IRN" ~ "INR",
                              x == "KWN" ~ "KRW",
                              x == "EPN" ~ "EGP",
-                             x == "EPN" ~ "EGP",
                              x == "BCN" ~ "BRL",
                              TRUE ~ x
                            ))
 
-## ---------- 6.  Forward-premium calculation ----------------
+## ---------- 6. Forward-premium calculation ----------------
 
 ## spot_final_combined_df already exists (USD/CCY)
 merged_1Y_df <- dplyr::left_join(fwd_1Y, spot_final_combined_df, by = "date")
@@ -588,12 +603,12 @@ fwd_1Y_premium_df <- merged_1Y_df %>% select(date)
 for (ccy in curr_ex_USD){
   fwd_1Y_premium_df[[ccy]] <-
     (merged_1Y_df[[paste0(ccy, ".x")]] /
-       merged_1Y_df[[paste0(ccy, ".y")]] - 1) * 100   # same formula, clearer
+       merged_1Y_df[[paste0(ccy, ".y")]] - 1) * 100  # same formula, clearer
 }
 
 fwd_1Y_premium_df <- dplyr::rename(fwd_1Y_premium_df, Date = date)
 
-## ---------- 7.  Format / print table -----------------------
+## ---------- 7. Format / print table -----------------------
 
 fwd_1Y_premium_output_df <- lapply(reference_dates, get_closest_row,
                                    df = fwd_1Y_premium_df) |>
@@ -611,7 +626,7 @@ vals   <- as.numeric(fwd_1Y_premium_formatted_df[row_to_colour, ])
 cols <- rep("#FFFFFF", length(vals))
 
 # 2. work only on the cells that are not NA
-idx   <- !is.na(vals)
+idx    <- !is.na(vals)
 
 if (any(idx)) {
   max_abs <- max(abs(vals[idx]), na.rm = TRUE)
@@ -640,7 +655,3 @@ kable(fwd_1Y_premium_formatted_df,
                 full_width = FALSE,
                 position   = "center") |>
   row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
-
-
-
-
