@@ -207,19 +207,163 @@ kable(narrow_formatted_df,
 
 
 
+### Take avg. as base value for REER index (=100) ###
+avg_broad_REER_df <- broad_REER_df
+avg_broad_REER <- numeric(length = 0) 
+
+# Loop through each currency column to recalculate the index
+for (ccy in colnames(broad_REER_df)[colnames(broad_REER_df) != "Date"]) {
+  # Calculate the average value for the current currency's REER index
+  # Use na.rm = TRUE to ignore NA values when calculating the mean
+  current_ccy_avg <- mean(broad_REER_df[[ccy]], na.rm = TRUE)
+  
+  # Store the average value in the avg_broad_REER vector, named by currency
+  avg_broad_REER[ccy] <- current_ccy_avg
+  
+  # Recalculate the index: (current_value / average_value) * 100
+  # Handle potential division by zero if the average is 0 (though unlikely for REER indices)
+  if (current_ccy_avg != 0 && !is.na(current_ccy_avg)) {
+    avg_broad_REER_df[[ccy]] <- (broad_REER_df[[ccy]] / current_ccy_avg) * 100
+  } else {
+    # If average is 0 or NA, set all values for that currency to NA in the new df
+    avg_broad_REER_df[[ccy]] <- NA
+  }
+}
+
+avg_narrow_REER_df <- narrow_REER_df
+avg_narrow_REER <- numeric(length = 0) 
+
+# Loop through each currency column to recalculate the index
+for (ccy in colnames(narrow_REER_df)[colnames(narrow_REER_df) != "Date"]) {
+  # Calculate the average value for the current currency's REER index
+  # Use na.rm = TRUE to ignore NA values when calculating the mean
+  current_ccy_avg <- mean(narrow_REER_df[[ccy]], na.rm = TRUE)
+  
+  # Store the average value in the avg_broad_REER vector, named by currency
+  avg_narrow_REER[ccy] <- current_ccy_avg
+  
+  # Recalculate the index: (current_value / average_value) * 100
+  # Handle potential division by zero if the average is 0 (though unlikely for REER indices)
+  if (current_ccy_avg != 0 && !is.na(current_ccy_avg)) {
+    avg_narrow_REER_df[[ccy]] <- (narrow_REER_df[[ccy]] / current_ccy_avg) * 100
+  } else {
+    # If average is 0 or NA, set all values for that currency to NA in the new df
+    avg_narrow_REER_df[[ccy]] <- NA
+  }
+}
+
+### Output table for Avg Broad REER (Average = 100)
+avg_broad_table <- lapply(reference_dates, get_closest_row, df = avg_broad_REER_df)
+avg_broad_output_df <- bind_rows(avg_broad_table, .id = "Period")
+avg_broad_output_df <- avg_broad_output_df[, c("Period", names(avg_broad_REER_df)[names(avg_broad_REER_df) != "Date"])]
+rownames(avg_broad_output_df) <- avg_broad_output_df$Period
+avg_broad_output_df <- avg_broad_output_df[, -1] 
+
+avg_broad_output_df["Δ1W(%)",] <- (avg_broad_output_df["Today",] / avg_broad_output_df["t-1W",] - 1) * 100
+avg_broad_output_df["Δ1M(%)",] <- (avg_broad_output_df["Today",] / avg_broad_output_df["t-1M",] - 1) * 100
+avg_broad_output_df["Δ3M(%)",] <- (avg_broad_output_df["Today",] / avg_broad_output_df["t-3M",] - 1) * 100
+avg_broad_output_df["Δ6M(%)",] <- (avg_broad_output_df["Today",] / avg_broad_output_df["t-6M",] - 1) * 100
+avg_broad_output_df["Δ1Y(%)",] <- (avg_broad_output_df["Today",] / avg_broad_output_df["t-1Y",] - 1) * 100
+avg_broad_output_df["Δ3Y(%)",] <- (avg_broad_output_df["Today",] / avg_broad_output_df["t-3Y",] - 1) * 100
+avg_broad_output_df["Δ5Y(%)",] <- (avg_broad_output_df["Today",] / avg_broad_output_df["t-5Y",] - 1) * 100
+avg_broad_output_df <- round(avg_broad_output_df, 2)
+print(avg_broad_output_df)
+
+
+### Print formatted outputs of Avg Broad REER analysis
+avg_broad_formatted_df <- avg_broad_output_df
+avg_broad_change_rows <- rownames(avg_broad_formatted_df)[grepl("Δ", rownames(avg_broad_formatted_df))]
+
+# Apply conditional formatting row-wise
+for (row in avg_broad_change_rows) {
+  vals <- as.numeric(avg_broad_formatted_df[row, ])
+  
+  # Scale values between -1 and 1 based on max absolute value
+  max_abs_val <- max(abs(vals), na.rm = TRUE)
+  scaled <- vals / max_abs_val
+  
+  # RGB coloring: red → white → green
+  colors <- rgb(
+    red   = ifelse(scaled < 0, 1, 1 - scaled),
+    green = ifelse(scaled > 0, 1, 1 + scaled),
+    blue  = ifelse(scaled < 0, 1 + scaled, 1 - scaled)
+  )
+  
+  # Apply formatting
+  avg_broad_formatted_df[row, ] <- cell_spec(vals, color = "black", background = colors, format = "html")
+}
+
+# Print styled table
+kable(avg_broad_formatted_df, 
+      format = "html", 
+      escape = FALSE,  # Enable HTML rendering in cells
+      caption = "Citi Broad REER Index (Average 2020-Today = 100)", # Updated caption
+      align = "r") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F,
+                position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
+
+
+### Output table for Avg Narrow REER (Average = 100)
+avg_narrow_table <- lapply(reference_dates, get_closest_row, df = avg_narrow_REER_df)
+avg_narrow_output_df <- bind_rows(avg_narrow_table, .id = "Period")
+avg_narrow_output_df <- avg_narrow_output_df[, c("Period", names(avg_narrow_REER_df)[names(avg_narrow_REER_df) != "Date"])]
+rownames(avg_narrow_output_df) <- avg_narrow_output_df$Period
+avg_narrow_output_df <- avg_narrow_output_df[, -1]
+
+avg_narrow_output_df["Δ1W(%)",] <- (avg_narrow_output_df["Today",] / avg_narrow_output_df["t-1W",] - 1) * 100
+avg_narrow_output_df["Δ1M(%)",] <- (avg_narrow_output_df["Today",] / avg_narrow_output_df["t-1M",] - 1) * 100
+avg_narrow_output_df["Δ3M(%)",] <- (avg_narrow_output_df["Today",] / avg_narrow_output_df["t-3M",] - 1) * 100
+avg_narrow_output_df["Δ6M(%)",] <- (avg_narrow_output_df["Today",] / avg_narrow_output_df["t-6M",] - 1) * 100
+avg_narrow_output_df["Δ1Y(%)",] <- (avg_narrow_output_df["Today",] / avg_narrow_output_df["t-1Y",] - 1) * 100
+avg_narrow_output_df["Δ3Y(%)",] <- (avg_narrow_output_df["Today",] / avg_narrow_output_df["t-3Y",] - 1) * 100
+avg_narrow_output_df["Δ5Y(%)",] <- (avg_narrow_output_df["Today",] / avg_narrow_output_df["t-5Y",] - 1) * 100
+avg_narrow_output_df <- round(avg_narrow_output_df, 2)
+print(avg_narrow_output_df)
+
+### Print formatted outputs of Avg Narrow REER analysis
+avg_narrow_formatted_df <- avg_narrow_output_df
+avg_narrow_change_rows <- rownames(avg_narrow_formatted_df)[grepl("Δ", rownames(avg_narrow_formatted_df))]
+
+# Apply conditional formatting row-wise
+for (row in avg_narrow_change_rows) {
+  vals <- as.numeric(avg_narrow_formatted_df[row, ])
+  
+  # Scale values between -1 and 1 based on max absolute value
+  max_abs_val <- max(abs(vals), na.rm = TRUE)
+  scaled <- vals / max_abs_val
+  
+  # RGB coloring: red → white → green
+  colors <- rgb(
+    red   = ifelse(scaled < 0, 1, 1 - scaled),
+    green = ifelse(scaled > 0, 1, 1 + scaled),
+    blue  = ifelse(scaled < 0, 1 + scaled, 1 - scaled)
+  )
+  
+  # Apply formatting
+  avg_narrow_formatted_df[row, ] <- cell_spec(vals, color = "black", background = colors, format = "html")
+}
+
+# Print styled table
+kable(avg_narrow_formatted_df, 
+      format = "html", 
+      escape = FALSE,  # Enable HTML rendering in cells
+      caption = "Citi Narrow REER Index (Average 2020-Today = 100)", # Updated caption
+      align = "r") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F,
+                position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
 
 
 
 
 
 
-
-
-
-
-##########################
-### 2. FORWARD PREMIUM ###
-##########################
+#############################
+### 2. FORWARD PREMIUM 1M ###
+#############################
 
 # Define currencies to be reciprocated for FX rates
 currencies_to_reciprocate <- c("EUR", "GBP", "AUD")
@@ -573,8 +717,9 @@ kable(fwd_1M_premium_vs_EUR_formatted_df,
 
 
 
-## 2-bis. Forward-Premium (1Y) – Revised for TRY & THB
-## ---------- 1. 1-Y forward instruments -------------------
+#############################
+### 3. FORWARD PREMIUM 1Y ###
+#############################
 ##   • all quotes remain USD/CCY                             ##
 ##   • TRY & THB now treated as forward-points pairs         ##
 
