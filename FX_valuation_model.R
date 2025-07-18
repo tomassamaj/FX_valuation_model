@@ -416,12 +416,47 @@ fwd_1M_premium_df <- fwd_1M_premium_df %>%rename(Date = date)
 
 
 
-### Output tables
-fwd_1M_premium_table <- lapply(reference_dates, get_closest_row, df = fwd_1M_premium_df)
-fwd_1M_premium_output_df <- bind_rows(fwd_1M_premium_table, .id = "Period")
-fwd_1M_premium_output_df <- fwd_1M_premium_output_df[, c("Period", names(fwd_1M_premium_df)[names(fwd_1M_premium_df) != "Date"])]
+# Helper function to get the closest non-NA historical value for a given date
+fill_na_with_closest_historical <- function(data_df, target_date_label, reference_dates_map, currency_list) {
+  # Initialize as a list, which is more flexible for different types
+  output_row_list <- list(Period = target_date_label) 
+  target_date <- reference_dates_map[[target_date_label]]
+  
+  for (ccy in currency_list) {
+    # Filter data up to the target date for the specific currency
+    sub_df <- data_df %>%
+      filter(Date <= target_date) %>%
+      select(Date, !!sym(ccy)) %>%
+      arrange(desc(Date))
+    
+    # Find the first non-NA value
+    found_value <- NA_real_
+    if (nrow(sub_df) > 0) {
+      first_non_na_idx <- which(!is.na(sub_df[[ccy]]))[1]
+      if (!is.na(first_non_na_idx)) {
+        found_value <- sub_df[[ccy]][first_non_na_idx]
+      }
+    }
+    output_row_list[[ccy]] <- found_value # Assign to list element
+  }
+  
+  # Convert the list to a tibble
+  return(as_tibble(output_row_list)) 
+}
+
+
+### Output tables for 1M forward premium
+fwd_1M_premium_output_list <- lapply(names(reference_dates), function(period_name) {
+  fill_na_with_closest_historical(fwd_1M_premium_df, period_name, reference_dates, curr_ex_USD)
+})
+
+fwd_1M_premium_output_df <- bind_rows(fwd_1M_premium_output_list)
+
+# Convert to data.frame before setting rownames
+fwd_1M_premium_output_df <- as.data.frame(fwd_1M_premium_output_df) 
+
 rownames(fwd_1M_premium_output_df) <- fwd_1M_premium_output_df$Period
-fwd_1M_premium_output_df <- fwd_1M_premium_output_df[, -1] 
+fwd_1M_premium_output_df <- fwd_1M_premium_output_df[, -1] # Remove Period column as it's now rownames
 fwd_1M_premium_output_df
 
 
@@ -448,7 +483,7 @@ for (row in fwd_1M_premium_change_rows) {
     max_abs_val <- max(abs(non_na_vals), na.rm = TRUE)
     scaled <- non_na_vals / max_abs_val
     
-    # RGB coloring: red → white → green for non-NA values
+    # RGB coloring: red -> white -> green for non-NA values
     non_na_colors <- rgb(
       red   = ifelse(scaled < 0, 1, 1 - scaled),
       green = ifelse(scaled > 0, 1, 1 + scaled),
@@ -475,7 +510,6 @@ kable(fwd_1M_premium_formatted_df,
                 full_width = F,
                 position = "center") %>%
   row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
-
 
 
 
@@ -525,7 +559,7 @@ bind_series <- function(lst){
 outrt_1Y_df       <- bind_series(fwd_1Y_outrt_data)      # outright prices
 fwd_points_1Y_df  <- bind_series(fwd_1Y_points_data)     # points (not yet scaled)
 
-## ---------- 4. Convert points → outright ------------------
+## ---------- 4. Convert points -> outright ------------------
 
 ## we already have spot_fwd_points_final_combined_df from the 1 M block
 ## (spot quoted USD/CCY). Use it; no need to re-download.
@@ -608,13 +642,21 @@ for (ccy in curr_ex_USD){
 
 fwd_1Y_premium_df <- dplyr::rename(fwd_1Y_premium_df, Date = date)
 
-## ---------- 7. Format / print table -----------------------
+### Output tables for 1Y forward premium
+fwd_1Y_premium_output_list <- lapply(names(reference_dates), function(period_name) {
+  fill_na_with_closest_historical(fwd_1Y_premium_df, period_name, reference_dates, curr_ex_USD)
+})
 
-fwd_1Y_premium_output_df <- lapply(reference_dates, get_closest_row,
-                                   df = fwd_1Y_premium_df) |>
-  bind_rows(.id = "Period") |>
-  select(-Date) |>
-  column_to_rownames("Period")
+fwd_1Y_premium_output_df <- bind_rows(fwd_1Y_premium_output_list)
+# Convert to data.frame before setting rownames
+fwd_1Y_premium_output_df <- as.data.frame(fwd_1Y_premium_output_df)
+
+rownames(fwd_1Y_premium_output_df) <- fwd_1Y_premium_output_df$Period
+fwd_1Y_premium_output_df <- fwd_1Y_premium_output_df[, -1] # Remove Period column
+fwd_1Y_premium_output_df
+
+
+## ---------- 7. Format / print table -----------------------
 
 fwd_1Y_premium_formatted_df <- round(fwd_1Y_premium_output_df, 2)
 row_to_colour <- "Today"
