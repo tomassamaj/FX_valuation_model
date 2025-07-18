@@ -512,8 +512,62 @@ kable(fwd_1M_premium_formatted_df,
   row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
 
 
+### 1M Fwd. Premium vs. EUR ###
+fwd_1M_premium_vs_EUR_df <- fwd_1M_premium_output_df
 
+# Apply the formula column-wise for all currencies except EUR
+for (ccy in colnames(fwd_1M_premium_vs_EUR_df)) {
+  if (ccy != "EUR") {
+    # Get the forward premium of CCY vs USD for all rows (this will be a vector)
+    fwd_prem_CCY_vs_USD_vec <- fwd_1M_premium_output_df[[ccy]]
+    
+    # Apply the vectorized formula.
+    # R will automatically handle NA values: if any component in a calculation is NA,
+    # the result for that element will also be NA.
+    fwd_1M_premium_vs_EUR_df[[ccy]] <- 
+      ((1 + (fwd_prem_CCY_vs_USD_vec / 100)) / (1 + (fwd_1M_premium_output_df$EUR / 100)) - 1) * 100
+  } else {
+    # For EUR itself, the premium against EUR is always 0 for all rows
+    fwd_1M_premium_vs_EUR_df[[ccy]] <- 0
+  }
+}
+# Drop the EUR column
+fwd_1M_premium_vs_EUR_df <- fwd_1M_premium_vs_EUR_df[, !(colnames(fwd_1M_premium_vs_EUR_df) %in% "EUR")]
 
+### Format output table ###
+fwd_1M_premium_vs_EUR_formatted_df <- round(fwd_1M_premium_vs_EUR_df, 2)
+row_to_colour_eur <- "Today" # Keeping this as per your previous instruction for coloring only the "Today" row
+
+vals_eur   <- as.numeric(fwd_1M_premium_vs_EUR_formatted_df[row_to_colour_eur, ])
+cols_eur <- rep("#FFFFFF", length(vals_eur)) 
+idx_eur    <- !is.na(vals_eur)
+
+if (any(idx_eur)) {
+  max_abs_eur <- max(abs(vals_eur[idx_eur]), na.rm = TRUE)
+  if (max_abs_eur == 0) max_abs_eur <- 1          # Avoid division by zero
+  
+  scaled_eur  <- vals_eur[idx_eur] / max_abs_eur
+  
+  cols_eur[idx_eur] <- rgb(
+    red   = ifelse(scaled_eur < 0, 1, 1 - scaled_eur),
+    green = ifelse(scaled_eur > 0, 1, 1 + scaled_eur),
+    blue  = ifelse(scaled_eur < 0, 1 + scaled_eur, 1 - scaled_eur)
+  )
+}
+
+fwd_1M_premium_vs_EUR_formatted_df[row_to_colour_eur, ] <-
+  cell_spec(vals_eur, color = "black", background = cols_eur, format = "html")
+
+kable(fwd_1M_premium_vs_EUR_formatted_df,
+      format  = "html",
+      escape  = FALSE,
+      caption = "Forward Premium (1M; against EUR) in %",
+      align   = "r") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed",
+                                      "responsive"),
+                full_width = FALSE,
+                position   = "center") |>
+  row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
 
 
 
@@ -691,6 +745,63 @@ kable(fwd_1Y_premium_formatted_df,
       format  = "html",
       escape  = FALSE,
       caption = "Forward Premium (1 Y; against USD) in %",
+      align   = "r") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed",
+                                      "responsive"),
+                full_width = FALSE,
+                position   = "center") |>
+  row_spec(0, bold = TRUE, color = "white", background = "#007ACC")
+
+### 1Y Fwd. Premium vs. EUR ###
+fwd_1Y_premium_vs_EUR_df <- fwd_1Y_premium_output_df
+
+# Apply the formula column-wise for all currencies except EUR
+for (ccy in colnames(fwd_1Y_premium_vs_EUR_df)) {
+  if (ccy != "EUR") {
+    # Get the forward premium of CCY vs USD for all rows (this will be a vector)
+    fwd_prem_CCY_vs_USD_vec <- fwd_1Y_premium_output_df[[ccy]]
+    
+    # Apply the vectorized formula.
+    # R will automatically handle NA values: if any component in a calculation is NA,
+    # the result for that element will also be NA.
+    fwd_1Y_premium_vs_EUR_df[[ccy]] <- 
+      ((1 + (fwd_prem_CCY_vs_USD_vec / 100)) / (1 + (fwd_1Y_premium_output_df$EUR / 100)) - 1) * 100
+  } else {
+    # For EUR itself, the premium against EUR is always 0 for all rows
+    fwd_1Y_premium_vs_EUR_df[[ccy]] <- 0
+  }
+}
+# Drop the EUR column
+fwd_1Y_premium_vs_EUR_df <- fwd_1Y_premium_vs_EUR_df[, !(colnames(fwd_1Y_premium_vs_EUR_df) %in% "EUR")]
+
+### Format output table ###
+fwd_1Y_premium_vs_EUR_formatted_df <- round(fwd_1Y_premium_vs_EUR_df, 2)
+row_to_colour_eur <- "Today" # Keeping this as per your previous instruction for coloring only the "Today" row
+
+vals_eur   <- as.numeric(fwd_1Y_premium_vs_EUR_formatted_df[row_to_colour_eur, ])
+cols_eur <- rep("#FFFFFF", length(vals_eur)) 
+idx_eur    <- !is.na(vals_eur)
+
+if (any(idx_eur)) {
+  max_abs_eur <- max(abs(vals_eur[idx_eur]), na.rm = TRUE)
+  if (max_abs_eur == 0) max_abs_eur <- 1          # Avoid division by zero
+  
+  scaled_eur  <- vals_eur[idx_eur] / max_abs_eur
+  
+  cols_eur[idx_eur] <- rgb(
+    red   = ifelse(scaled_eur < 0, 1, 1 - scaled_eur),
+    green = ifelse(scaled_eur > 0, 1, 1 + scaled_eur),
+    blue  = ifelse(scaled_eur < 0, 1 + scaled_eur, 1 - scaled_eur)
+  )
+}
+
+fwd_1Y_premium_vs_EUR_formatted_df[row_to_colour_eur, ] <-
+  cell_spec(vals_eur, color = "black", background = cols_eur, format = "html")
+
+kable(fwd_1Y_premium_vs_EUR_formatted_df,
+      format  = "html",
+      escape  = FALSE,
+      caption = "Forward Premium (1Y; against EUR) in %",
       align   = "r") |>
   kable_styling(bootstrap_options = c("striped", "hover", "condensed",
                                       "responsive"),
