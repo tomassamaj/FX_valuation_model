@@ -39,7 +39,8 @@ curr <- c(
   "AUD",  # Australia
   "HKD",  # Hong Kong
   "JPY",  # Japan
-  "SGD"   # Singapore
+  "SGD",  # Singapore
+  "NZD"   #New Zealand 
 )
 
 
@@ -370,7 +371,7 @@ currencies_to_reciprocate <- c("EUR", "GBP", "AUD")
 
 
 ### Define outright forwards tickers
-curr_outrt <- curr[!curr %in% c("USD", "CZK", "PLN", "CAD", "EUR", "ILS", "SEK", "CHF", "GBP", "AUD", "HKD", "SGD")]
+curr_outrt <- curr[!curr %in% c("USD", "CZK", "PLN", "CAD", "EUR", "ILS", "SEK", "CHF", "GBP", "AUD", "HKD", "SGD", "NZD")]
 curr_outrt <- dplyr::case_when(
   curr_outrt == "TWD" ~ "NTN",
   curr_outrt == "CNY" ~ "CCN",
@@ -386,8 +387,8 @@ curr_outrt <- dplyr::case_when(
 fwd_1M_outrt <- paste0(curr_outrt,"+1M Curncy")
 
 ### Define forward points tickers for currencies with no outright forwards
-#no outright: CZK, PLN, CAD, EUR, ILS, SEK, CHF, GBP, AUD, HKD, SGD
-curr_fwd_points <- c("CZK", "PLN", "CAD", "EUR", "ILS", "SEK", "CHF", "GBP", "AUD", "HKD", "SGD") 
+#no outright: CZK, PLN, CAD, EUR, ILS, SEK, CHF, GBP, AUD, HKD, SGD, NZD
+curr_fwd_points <- c("CZK", "PLN", "CAD", "EUR", "ILS", "SEK", "CHF", "GBP", "AUD", "HKD", "SGD", "NZD") 
 fwd_1M_points <- paste0(curr_fwd_points, "1M Curncy")
 
 
